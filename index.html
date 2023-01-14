@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style/index.css">
+    <title>Blog</title>
+</head>
+<body>
+    <section class="blog">
+        <header class="header">
+            <h1 id="header-h1">Blog</h1>
+            <p>Autor: Łukasz Osmański</p>
+            <label for="sort">Sortuj:</label>
+            <select id="sort" name="sort">
+                <option value="desc">Od najnowszych do najstarszych</option>
+                <option value="asc">Od najstarszych do najnowszych</option>
+            </select>
+            <label for="posts-per-page">Posty na stronę:</label>
+            <select id="posts-per-page" name="posts-per-page">
+                <option value="17">17</option>
+                <option value="25">25</option>
+                <option value="37">37</option>
+            </select>
+        </header>
+        <div class="posts-grid">
+            
+        </div>
+        <div class="page-buttons">
+            <button id="previous-page">Poprzednia strona</button>
+            <p>Strona <span id="current-page">1</span> z <span id="last-page">1</span></p>
+            <button id="next-page">Następna strona</button>
+        </div>
+    </section>
+
+    <script>
+        const grid = document.querySelector('.posts-grid');
+        const headerH1 = document.getElementById('header-h1');
+        const sortSelect = document.getElementById('sort');
+        const postsPerPageSelect = document.getElementById('posts-per-page');
+        const previousPageButton = document.getElementById('previous-page');
+        const nextPageButton = document.getElementById('next-page');
+        var postsPerPage = 17;
+        var posts;
+        var lastPage;
+        var page = 1;
+        var order = 'desc';
+
+        const fetchPosts = (callback) => {
+            try {
+                Promise.all([
+                    fetch('https://jsonplaceholder.typicode.com/posts'),
+                    fetch('https://jsonplaceholder.typicode.com/photos')
+                ])
+                .then(responses => Promise.all(responses.map(response => response.json())))
+                .then(result => {
+                    posts = result[0];
+                    let photos = result[1];
+                    posts.map((post, index) => post.img = photos[index].url);
+                    
+                    callback();
+                })
+            } catch {
+                console.log('Error fetching the data');
+            }
+        }
+
+        const generatePosts = () => {
+            posts.sort((post1, post2) => post1.id - post2.id);
+            if(order == 'desc') {
+                posts.reverse();
+            }
+
+            grid.replaceChildren();
+
+            lastPage = Math.ceil(posts.length / postsPerPage);
+            document.getElementById('last-page').innerText = lastPage;
+
+            let limit = postsPerPage * page;
+            if(limit > posts.length) {
+                limit = posts.length
+            }
+
+            for (let i = postsPerPage * (page-1); i<limit; i++) {
+                const post = posts[i];
+
+                let postElement = document.createElement('div');
+                postElement.className = 'post';
+
+                let imgElement = document.createElement('img');
+                imgElement.src = post.img;
+
+                let titleElement = document.createElement('h2');
+                titleElement.innerText = post.title;
+
+                let buttonElement = document.createElement('button');
+                buttonElement.innerText = 'Opis';
+                buttonElement.addEventListener('click', ev => {
+                    let descriptionElement = document.getElementById('description');
+                    if(!descriptionElement) {
+                        descriptionElement = document.createElement('p');
+                        descriptionElement.id = 'description';
+                        document.body.appendChild(descriptionElement);
+                    }
+                    descriptionElement.innerText = post.body;
+                });
+                
+                postElement.appendChild(imgElement);
+                postElement.appendChild(titleElement);
+                postElement.appendChild(buttonElement);
+                
+                grid.appendChild(postElement);
+            }
+        }
+
+        const changePage = (newPage) => {
+            page = newPage;
+            document.getElementById('current-page').innerText = newPage;
+            headerH1.scrollIntoView();
+            generatePosts();
+        }
+
+        const previousPage = () => {
+            if(page > 1) {
+                changePage(page-1);
+            }
+        }
+
+        const nextPage = () => {
+            if(page < lastPage) {
+                changePage(page+1);
+            }
+        }
+
+        window.addEventListener('load', ev => {
+            fetchPosts(() => generatePosts());
+        })
+
+        sortSelect.addEventListener('change', ev => {
+            order == 'asc' ? order = 'desc' : order = 'asc';
+            changePage(1);
+        })
+
+        previousPageButton.addEventListener('click', ev => previousPage())
+        nextPageButton.addEventListener('click', ev => nextPage())
+        postsPerPageSelect.addEventListener('change', ev => {
+            postsPerPage = +postsPerPageSelect.value;
+            changePage(1);
+        })
+    </script>
+</body>
+</html>
